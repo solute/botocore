@@ -436,12 +436,19 @@ class AWSPreparedRequest(models.PreparedRequest):
         # requests cannot determine content length for some seekable file-like
         # objects.
         if 'Content-Length' not in self.headers:
-            if hasattr(data, 'seek') and hasattr(data, 'tell'):
+            if hasattr(data, '__len__'):
+                length = len(data)
+            elif hasattr(data, 'seek') and hasattr(data, 'tell'):
                 orig_pos = data.tell()
                 data.seek(0, 2)
                 end_file_pos = data.tell()
-                self.headers['Content-Length'] = str(end_file_pos - orig_pos)
+                length = end_file_pos - orig_pos
                 data.seek(orig_pos)
+            else:
+                length = None
+
+            if length is not None:
+                self.headers['Content-Length'] = str(length)
                 # If the Content-Length was added this way, a
                 # Transfer-Encoding was added by requests because it did
                 # not add a Content-Length header. However, the
